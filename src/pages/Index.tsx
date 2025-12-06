@@ -1,45 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { StatCard } from "@/components/StatCard";
-import { LogBottleButton } from "@/components/LogBottleButton";
-import { ProgressChart } from "@/components/ProgressChart";
-import { LeaderboardCard } from "@/components/LeaderboardCard";
-import { ImpactCard } from "@/components/ImpactCard";
+import { EntryForm } from "@/components/EntryForm";
+import { EntriesList } from "@/components/EntriesList";
+import { QRScanner } from "@/components/QRScanner";
+import { StatsOverview } from "@/components/StatsOverview";
 import { BottleIcon } from "@/components/BottleIcon";
-import { Recycle, Target, Calendar, MapPin, BarChart3, User, Settings, Award } from "lucide-react";
+import { BottleEntry } from "@/types/entry";
 import { useToast } from "@/hooks/use-toast";
+import { Smartphone, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const mockWeeklyData = [
-  { day: "Mon", bottles: 12 },
-  { day: "Tue", bottles: 8 },
-  { day: "Wed", bottles: 15 },
-  { day: "Thu", bottles: 10 },
-  { day: "Fri", bottles: 18 },
-  { day: "Sat", bottles: 22 },
-  { day: "Sun", bottles: 14 },
-];
-
-const mockLeaderboard = [
-  { id: "1", name: "Maria Garcia", bottles: 342 },
-  { id: "2", name: "John Smith", bottles: 298 },
-  { id: "current", name: "You", bottles: 247 },
-  { id: "4", name: "Alex Chen", bottles: 201 },
-  { id: "5", name: "Emma Wilson", bottles: 189 },
-];
+const STORAGE_KEY = "ecotrack_entries";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const [totalBottles, setTotalBottles] = useState(247);
-  const [todayBottles, setTodayBottles] = useState(14);
+  const [entries, setEntries] = useState<BottleEntry[]>([]);
+  const [latestEntry, setLatestEntry] = useState<BottleEntry | null>(null);
   const { toast } = useToast();
 
-  const handleLogBottle = (count: number) => {
-    setTotalBottles((prev) => prev + count);
-    setTodayBottles((prev) => prev + count);
+  // Load entries from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setEntries(parsed.map((e: BottleEntry) => ({
+          ...e,
+          createdAt: new Date(e.createdAt),
+          submittedAt: e.submittedAt ? new Date(e.submittedAt) : null,
+        })));
+      } catch {
+        console.error("Failed to parse stored entries");
+      }
+    }
+  }, []);
+
+  // Save entries to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }, [entries]);
+
+  const handleNewEntry = (entry: BottleEntry) => {
+    setEntries((prev) => [entry, ...prev]);
+    setLatestEntry(entry);
     toast({
-      title: "🎉 Great job!",
-      description: `You recycled ${count} ${count === 1 ? "bottle" : "bottles"}! Keep it up!`,
+      title: "Entry Created!",
+      description: `QR code generated for ${entry.personName} with ${entry.bottleCount} bottles.`,
+    });
+  };
+
+  const handleVerify = (entryId: string) => {
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.id === entryId
+          ? { ...e, status: "submitted" as const, submittedAt: new Date() }
+          : e
+      )
+    );
+    toast({
+      title: "Bottles Verified!",
+      description: "Entry marked as submitted successfully.",
     });
   };
 
@@ -48,16 +69,16 @@ const Index = () => {
       case "home":
         return (
           <div className="space-y-5">
-            {/* Hero Section */}
+            {/* Hero */}
             <div className="gradient-eco rounded-2xl p-6 shadow-eco text-primary-foreground animate-slide-up">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-primary-foreground/80 text-sm font-medium">
-                    Welcome back! 👋
+                    Welcome! 👋
                   </p>
-                  <h2 className="text-2xl font-bold mt-1">Keep Recycling!</h2>
+                  <h2 className="text-2xl font-bold mt-1">Track Bottles</h2>
                   <p className="text-primary-foreground/80 text-sm mt-2">
-                    You're making a difference
+                    Register & verify plastic bottle recycling
                   </p>
                 </div>
                 <div className="animate-float">
@@ -66,121 +87,67 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <StatCard
-                title="Today"
-                value={todayBottles}
-                subtitle="bottles recycled"
-                icon={Recycle}
-                trend={{ value: 12, isPositive: true }}
-                delay={50}
-              />
-              <StatCard
-                title="Total"
-                value={totalBottles}
-                subtitle="all time"
-                icon={Target}
-                delay={100}
-              />
-            </div>
+            {/* Stats */}
+            <StatsOverview entries={entries} />
 
-            {/* Log Bottle */}
-            <LogBottleButton onLog={handleLogBottle} />
+            {/* Entry Form */}
+            <EntryForm onSubmit={handleNewEntry} />
 
-            {/* Weekly Progress */}
-            <ProgressChart data={mockWeeklyData} />
-
-            {/* Environmental Impact */}
-            <ImpactCard totalBottles={totalBottles} />
-
-            {/* Leaderboard */}
-            <LeaderboardCard users={mockLeaderboard} currentUserId="current" />
-          </div>
-        );
-
-      case "stats":
-        return (
-          <div className="space-y-5">
-            <div className="text-center py-8 animate-slide-up">
-              <div className="inline-flex items-center justify-center p-4 rounded-2xl bg-primary/10 mb-4">
-                <BarChart3 className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">Statistics</h2>
-              <p className="text-muted-foreground mt-2">
-                Detailed analytics coming soon
-              </p>
-            </div>
-            <ProgressChart data={mockWeeklyData} />
-            <ImpactCard totalBottles={totalBottles} />
-          </div>
-        );
-
-      case "map":
-        return (
-          <div className="text-center py-12 animate-slide-up">
-            <div className="inline-flex items-center justify-center p-4 rounded-2xl bg-accent/10 mb-4">
-              <MapPin className="w-8 h-8 text-accent" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">Collection Points</h2>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">
-              Find nearby recycling stations and collection points
-            </p>
-            <div className="mt-6 p-8 rounded-2xl bg-muted/50 border border-border">
-              <p className="text-sm text-muted-foreground">
-                Map integration coming soon
-              </p>
-            </div>
-          </div>
-        );
-
-      case "profile":
-        return (
-          <div className="space-y-5 animate-slide-up">
-            <div className="text-center py-6">
-              <div className="w-24 h-24 rounded-full gradient-eco mx-auto flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-eco">
-                Y
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mt-4">Your Profile</h2>
-              <p className="text-muted-foreground">Eco Warrior Level 3</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <StatCard
-                title="Total Bottles"
-                value={totalBottles}
-                icon={Recycle}
-                delay={50}
-              />
-              <StatCard
-                title="Rank"
-                value="#3"
-                subtitle="in your area"
-                icon={Award}
-                delay={100}
-              />
-            </div>
-
-            <div className="gradient-card rounded-2xl p-5 shadow-card border border-border/50">
-              <h3 className="font-bold text-foreground mb-4">Settings</h3>
+            {/* Latest Entry */}
+            {latestEntry && latestEntry.status === 'pending' && (
               <div className="space-y-3">
-                {[
-                  { icon: User, label: "Edit Profile" },
-                  { icon: Settings, label: "Preferences" },
-                  { icon: Award, label: "Achievements" },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
-                  >
-                    <item.icon className="w-5 h-5 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{item.label}</span>
-                  </button>
-                ))}
+                <h3 className="text-lg font-bold text-foreground">Latest Entry</h3>
+                <div className="animate-slide-up">
+                  <div className="gradient-card rounded-2xl p-4 shadow-card border border-primary/30">
+                    <p className="text-sm text-muted-foreground mb-2">Show this QR when returning bottles:</p>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <BottleIcon size={24} className="text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-foreground">{latestEntry.personName}</p>
+                        <p className="text-sm text-muted-foreground">{latestEntry.bottleCount} bottles</p>
+                      </div>
+                      <Button
+                        variant="eco"
+                        size="sm"
+                        onClick={() => setActiveTab("entries")}
+                      >
+                        View QR
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Install App */}
+            <div className="gradient-card rounded-2xl p-5 shadow-card border border-border/50 animate-slide-up" style={{ animationDelay: "200ms" }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 rounded-xl bg-accent/20">
+                  <Smartphone className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Install App</h3>
+                  <p className="text-sm text-muted-foreground">Add to home screen</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Install this app on your phone for quick access. Open browser menu and tap "Add to Home Screen".
+              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                <Download className="w-4 h-4" />
+                <span>Works offline • No app store needed</span>
               </div>
             </div>
           </div>
         );
+
+      case "entries":
+        return <EntriesList entries={entries} />;
+
+      case "scan":
+        return <QRScanner entries={entries} onVerify={handleVerify} />;
 
       default:
         return null;
