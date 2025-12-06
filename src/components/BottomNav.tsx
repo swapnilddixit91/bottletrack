@@ -1,5 +1,4 @@
-import { Home, BarChart3, MapPin, User } from "lucide-react";
-import { BottleIcon } from "./BottleIcon";
+import { Home, QrCode, Camera, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomNavProps {
@@ -9,9 +8,8 @@ interface BottomNavProps {
 
 const navItems = [
   { id: "home", label: "Home", icon: Home },
-  { id: "stats", label: "Stats", icon: BarChart3 },
-  { id: "map", label: "Locations", icon: MapPin },
-  { id: "profile", label: "Profile", icon: User },
+  { id: "entries", label: "Entries", icon: ClipboardList },
+  { id: "scan", label: "Scan", icon: Camera },
 ];
 
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
@@ -27,14 +25,14 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={cn(
-                "flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all duration-300",
+                "flex flex-col items-center gap-1 py-2 px-6 rounded-xl transition-all duration-300",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               <div className={cn(
-                "relative p-1.5 rounded-lg transition-all duration-300",
+                "relative p-2 rounded-lg transition-all duration-300",
                 isActive && "bg-primary/10"
               )}>
                 <Icon className="w-5 h-5" />
